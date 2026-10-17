@@ -1,6 +1,6 @@
 # Podium reporter kit (experimental)
 
-A Docker Sandboxes kit that installs and configures the `podium-reporter` Claude Code plugin at
+A [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) kit that installs and configures the `podium-reporter` Claude Code plugin at
 sandbox startup, so every Claude Code session run inside the sandbox shows up on a Podium fleet
 console running on (or reachable from) the host — without the Podium auth token ever being stored
 inside the sandbox.

@@ -1,15 +1,14 @@
 # Podium reporter kit (experimental)
 
-A [Docker Sandboxes](https://docs-labs.docker.com/) kit that installs and configures the
-`podium-reporter` Claude Code plugin at sandbox startup, so every Claude Code session run inside
-the sandbox shows up on a Podium fleet console running on (or reachable from) the host — without
-the Podium auth token ever being stored inside the sandbox.
+A Docker Sandboxes kit that installs and configures the `podium-reporter` Claude Code plugin at
+sandbox startup, so every Claude Code session run inside the sandbox shows up on a Podium fleet
+console running on (or reachable from) the host — without the Podium auth token ever being stored
+inside the sandbox.
 
-This is a first draft, built against the [Connect to services without exposing
-credentials](https://docs-labs.docker.com/learn/content/connect-to-services-without-exposing-credentials/)
-and [Make your Sandbox kits configurable](https://docs-labs.docker.com/learn/content/make-your-sandbox-kits-configurable/)
-guides and one locally-inspected example (`/etc/durable-startup.d/` inside a real sandbox). It has
-not yet been exercised end to end with a real `sbx create` — see "Known unknowns" below.
+This is a first draft, built against the Docker Sandboxes kit guides for connecting to a service
+without exposing credentials and for making a kit configurable, plus one locally-inspected example
+(`/etc/durable-startup.d/` inside a real sandbox). It has not yet been exercised end to end with a
+real `sbx create` — see "Known unknowns" below.
 
 ## What it does
 

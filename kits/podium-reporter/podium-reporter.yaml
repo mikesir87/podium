@@ -30,19 +30,27 @@ args:
 capabilities:
   # Opens exactly the routes the podium-reporter mod calls (POST /report,
   # GET/PUT/POST under /sessions/:id for the respond-bridge) and nothing
-  # else on the Podium server.
+  # else on the Podium server. `localhost` is listed alongside serverHost
+  # because the sandbox proxy treats `host.docker.internal` as an alias for
+  # `localhost` for policy purposes (confirmed: a request to
+  # host.docker.internal:<port> shows up as an approval/policy check against
+  # localhost:<port>), so the default serverHost needs both to match.
   - type: com.docker.sandbox/network-policy@2
     config:
       runtime:
         allow:
-          - hosts: ["${{ kit.args.serverHost }}:${{ kit.args.serverPort }}"]
+          - hosts:
+              - "${{ kit.args.serverHost }}:${{ kit.args.serverPort }}"
+              - "localhost:${{ kit.args.serverPort }}"
             methods: [GET, POST, PUT]
             paths: ["/api/fleet/**"]
 
   # The real X-Podium-Token value never enters the sandbox. The plugin is
   # configured with the placeholder in $PODIUM_API_TOKEN, and the host-side
   # proxy swaps in the real value (from `sbx secret set podium-token`) only
-  # on requests to serverHost.
+  # on requests to serverHost. Both domains are listed for the same
+  # host.docker.internal/localhost aliasing reason as the network policy
+  # above (unconfirmed whether injection needs this too — see README).
   - type: com.docker.sandbox/credential@1
     description: Podium report token
     config:
@@ -53,6 +61,9 @@ capabilities:
         proxyManaged: true
         inject:
           - domain: "${{ kit.args.serverHost }}"
+            header: X-Podium-Token
+            format: "%s"
+          - domain: localhost
             header: X-Podium-Token
             format: "%s"
 

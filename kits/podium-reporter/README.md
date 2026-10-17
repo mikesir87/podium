@@ -13,8 +13,10 @@ real `sbx create` — see "Known unknowns" below.
 ## What it does
 
 - **Network policy**: opens exactly the routes `podium-reporter` calls — `GET`/`POST`/`PUT` under
-  `/api/fleet/**` on the configured Podium host and port. Nothing else on that host, and no other
-  host at all.
+  `/api/fleet/**` on the configured Podium host and port, and the same on `localhost` at that port
+  (the sandbox proxy treats `host.docker.internal` as an alias for `localhost` for policy purposes,
+  confirmed: a request to `host.docker.internal:<port>` is checked against `localhost:<port>`).
+  Nothing else on either host, and no other host at all.
 - **Credential**: declares a proxy-managed secret named `podium-token`. The plugin's `token` option
   is set to the placeholder in `$PODIUM_API_TOKEN`; the sandbox's egress proxy swaps in the real
   value (from `sbx secret set podium-token` on the host) only on requests to the configured Podium
@@ -65,10 +67,15 @@ sends its first prompt.
 
 ## Known unknowns (flag these when testing)
 
-- **Port inside `network-policy`'s `hosts` vs `credential`'s `inject.domain`.** The hosts entry is
-  written as `host:port` (`host.docker.internal:4317`); the credential's `inject.domain` is written
-  as a bare host, per every example in the capability spec. Unconfirmed whether that's actually
-  required, or whether `inject.domain` needs the port too.
+- **Whether `credential`'s `inject.domain` needs the same `localhost` alias as the network
+  policy.** The network policy confirmed needs both `host.docker.internal` and `localhost` listed
+  (see above); the credential declares both for the same reason, but that half hasn't been
+  confirmed the same way yet — only that leaving `localhost` out of the network policy caused a
+  policy failure on an otherwise-allowed path.
+- **Port inside `network-policy`'s `hosts` vs `credential`'s `inject.domain`.** The hosts entries
+  are written as `host:port`; the credential's `inject.domain` entries are written as a bare host,
+  per every example in the capability spec. Unconfirmed whether that's actually required, or
+  whether `inject.domain` needs the port too.
 - **Whether a `startup` lifecycle hook can read a `phase: runtime` credential's env var.** It's
   modeled here the same way the sandbox's own built-in MCP-gateway registration script does it
   (reads `$MCP_SENTINEL_TOKEN_NAME` from a startup-dispatched script), which is believed to carry

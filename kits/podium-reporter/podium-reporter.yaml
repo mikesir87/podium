@@ -1,0 +1,101 @@
+# syntax=docker/sandbox-kit:3
+schemaVersion: "3"
+kind: mixin
+displayName: Podium reporter
+description: >-
+  Installs and configures the podium-reporter Claude Code plugin so every
+  session in this sandbox reports to a Podium fleet console on the host,
+  with the report token proxy-managed instead of stored in the sandbox.
+version: "0.1.0"
+
+args:
+  serverHost:
+    default: host.docker.internal
+    description: >-
+      Hostname of the Podium server to report to. The default reaches a
+      Podium server bound on the sandbox host machine (the server must bind
+      an interface the sandbox's gateway can reach, not 127.0.0.1 alone —
+      see this kit's README).
+  serverPort:
+    default: "4317"
+    pattern: '^[0-9]+$'
+    description: Port the Podium server listens on.
+  userName:
+    default: ""
+    description: >-
+      The name this sandbox's token was made for in Podium Admin. Leave
+      empty to report with the server's shared admin secret instead of a
+      per-person token.
+
+capabilities:
+  # Opens exactly the routes the podium-reporter mod calls (POST /report,
+  # GET/PUT/POST under /sessions/:id for the respond-bridge) and nothing
+  # else on the Podium server.
+  - type: com.docker.sandbox/network-policy@2
+    config:
+      runtime:
+        allow:
+          - hosts: ["${{ kit.args.serverHost }}:${{ kit.args.serverPort }}"]
+            methods: [GET, POST, PUT]
+            paths: ["/api/fleet/**"]
+
+  # The real X-Podium-Token value never enters the sandbox. The plugin is
+  # configured with the placeholder in $PODIUM_API_TOKEN, and the host-side
+  # proxy swaps in the real value (from `sbx secret set podium-token`) only
+  # on requests to serverHost.
+  - type: com.docker.sandbox/credential@1
+    description: Podium report token
+    config:
+      service: podium-token
+      phase: runtime
+      apiKey:
+        name: PODIUM_API_TOKEN
+        proxyManaged: true
+        inject:
+          - domain: "${{ kit.args.serverHost }}"
+            header: X-Podium-Token
+            format: "%s"
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      startup:
+        - command:
+            - sh
+            - -c
+            - |
+              set -e
+              export PATH="$HOME/.local/bin:$HOME/.claude/local:$PATH"
+              claude plugin install podium-reporter --marketplace eengelking/skills -s user -y \
+                --config "serverUrl=http://${{ kit.args.serverHost }}:${{ kit.args.serverPort }}" \
+                --config "userName=${{ kit.args.userName }}" || true
+          user: agent
+          description: Install and configure the podium-reporter plugin (runs every boot; idempotent)
+
+        - command:
+            - sh
+            - -c
+            - |
+              set -e
+              export PATH="$HOME/.local/bin:$HOME/.claude/local:$PATH"
+              if [ -n "$PODIUM_API_TOKEN" ]; then
+                printf '{"token":"%s"}' "$PODIUM_API_TOKEN" \
+                  | claude plugin configure podium-reporter@eengelking-marketplace --values-stdin || true
+              fi
+          user: agent
+          env: [PODIUM_API_TOKEN]
+          description: Store the proxy-managed placeholder token in the plugin's secure config
+
+  - type: com.docker.sandbox/agent-context@1
+    config:
+      content: |
+        ## Podium fleet console reporting
+
+        This sandbox reports its Claude Code sessions to a Podium fleet console at
+        `http://${{ kit.args.serverHost }}:${{ kit.args.serverPort }}/#/` via the
+        `podium-reporter` plugin, already installed and configured.
+
+        Authentication is proxy-managed: the plugin's token option holds a
+        placeholder (`$PODIUM_API_TOKEN`), which the sandbox's egress proxy swaps
+        for the real value only on requests to the Podium server above. The real
+        token is never present in this sandbox. Never print the placeholder as if
+        it were useful, and never ask the user for the real token.

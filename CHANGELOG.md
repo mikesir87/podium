@@ -14,6 +14,10 @@ the changes merged after the reporter's 0.14.3 bump, because it is the first rel
 
 ## [Unreleased]
 
+### Added
+
+- **An experimental Docker Sandboxes kit (`kits/podium-reporter/`) installs and configures the `podium-reporter` plugin at sandbox startup**, so every Claude Code session in the sandbox reports to a Podium server on the host without the report token ever being stored in the sandbox — the token is proxy-managed, substituted by the sandbox's egress proxy only on requests to the configured Podium host. Not yet exercised end to end against a real `sbx create`; see the kit's own README for known unknowns.
+
 ## [1.0.2] - 2026-10-16
 
 ### Fixed
